@@ -1,0 +1,17 @@
+winebus: treat Xbox controllers on Bluetooth LE firmware as Xbox gamepads.
+
+Xbox One S and Elite 2 controllers updated to the Bluetooth LE firmware
+report product IDs 0x0b20 and 0x0b22. Wine's list did not have them, so
+winexinput never attached and XInput saw no controller.
+
+--- a/dlls/winebus.sys/unixlib.h
++++ b/dlls/winebus.sys/unixlib.h
+@@ -190,6 +190,8 @@
+     if (pid == 0x0b05) return TRUE; /* Xbox Elite 2 Wireless */
+     if (pid == 0x0b12) return TRUE; /* Xbox Series */
+     if (pid == 0x0b13) return TRUE; /* Xbox Series Wireless */
++    if (pid == 0x0b20) return TRUE; /* Xbox One S Wireless (Bluetooth LE firmware) */
++    if (pid == 0x0b22) return TRUE; /* Xbox Elite 2 Wireless (Bluetooth LE firmware) */
+     if (pid == 0x0719) return TRUE; /* Xbox 360 Wireless Adapter */
+     return FALSE;
+ }
