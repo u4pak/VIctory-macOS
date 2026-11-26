@@ -23,6 +23,12 @@ else
 fi
 export WINEPREFIX="${WINEPREFIX:-$ROOT/target/wineprefix-play}"
 export WINEDEBUG="${WINEDEBUG:--all}"
+# Wine is built without SDL, and winebus reads gamepads straight from IOHID
+# only when SDL and its input bus are both off. Otherwise XInput sees no pad.
+if ! grep -qs '"Enable SDL"=dword:00000000' "$WINEPREFIX/system.reg"; then
+    "$WINE" reg add 'HKLM\System\CurrentControlSet\Services\winebus' /v 'Enable SDL' /t REG_DWORD /d 0 /f > /dev/null
+    "$WINE" reg add 'HKLM\System\CurrentControlSet\Services\winebus' /v DisableInput /t REG_DWORD /d 1 /f > /dev/null
+fi
 export WINEDLLOVERRIDES="mscoree,mshtml=;winedbg.exe=d;d3d12,d3d12core,dxgi=b${WINEDLLOVERRIDES:+;$WINEDLLOVERRIDES}"
 # Rosetta tells the game about AVX and AVX2, which it may check for.
 export ROSETTA_ADVERTISE_AVX=1

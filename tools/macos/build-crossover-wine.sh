@@ -68,12 +68,14 @@ if ! grep -q 'victory-macos fallback' "$VK"; then
 fi
 
 # An installed Wine has D3DMetal's DLLs copied over Wine's own, and make
-# install would put Wine's back. So it gets only its server rebuilt, which
-# is enough while the patches change nothing but the server.
+# install would put Wine's back. So it gets only its server, winebus's
+# Unix side and the XInput DLLs rebuilt, which is enough while the patches
+# change nothing else.
+XINPUT=(xinput1_1 xinput1_2 xinput1_3 xinput1_4 xinputuap)
 installed=0
 if [[ -x $PREFIX/bin/wine ]]; then
   installed=1
-  outside=($(grep -h '^+++ ' "${PATCHES[@]}" /dev/null | awk '{sub(/^b\//, "", $2); print $2}' | grep -v '^server/' || true))
+  outside=($(grep -h '^+++ ' "${PATCHES[@]}" /dev/null | awk '{sub(/^b\//, "", $2); print $2}' | grep -v -e '^server/' -e '^dlls/winebus.sys/unixlib.h$' -e '^dlls/xinput1_3/main.c$' || true))
   (( ${#outside} == 0 )) || { echo "the patches change ${outside[*]}: remove $PREFIX and build Wine again" >&2; exit 1; }
 fi
 
@@ -110,9 +112,11 @@ if [[ ! -f Makefile ]]; then
     --without-ffmpeg > configure.log 2>&1 || { tail -20 configure.log; exit 1; }
 fi
 if (( installed )); then
-  echo "rebuilding the server of the installed CrossOver Wine"
-  x86 make -j"$(sysctl -n hw.ncpu)" server/wineserver > make.log 2>&1 || { grep -E 'error:|\*\*\*' make.log | grep -v Wno-error | head -5; exit 1; }
+  echo "rebuilding the server, winebus and XInput of the installed CrossOver Wine"
+  x86 make -j"$(sysctl -n hw.ncpu)" server/wineserver dlls/winebus.sys/winebus.so $(for x in $XINPUT; do echo dlls/$x/x86_64-windows/$x.dll; done) > make.log 2>&1 || { grep -E 'error:|\*\*\*' make.log | grep -v Wno-error | head -5; exit 1; }
   install -m 755 server/wineserver "$PREFIX/bin/wineserver"
+  install -m 755 dlls/winebus.sys/winebus.so "$PREFIX/lib/wine/x86_64-unix/winebus.so"
+  for x in $XINPUT; do install -m 644 dlls/$x/x86_64-windows/$x.dll "$PREFIX/lib/wine/x86_64-windows/$x.dll"; done
 else
   echo "building CrossOver Wine"
   x86 make -j"$(sysctl -n hw.ncpu)" > make.log 2>&1 || { grep -E 'error:|\*\*\*' make.log | grep -v Wno-error | head -5; exit 1; }
